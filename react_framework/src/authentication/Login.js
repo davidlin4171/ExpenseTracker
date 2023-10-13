@@ -17,8 +17,6 @@ const Login = () => {
         }, 500);
     }
 
-    //    <div className="container d-flex justify-content-center align-items-center vh-100">
-
     return (
         <React.Fragment>
             <Container className="container d-flex justify-content-center align-items-center">
