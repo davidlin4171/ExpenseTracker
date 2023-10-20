@@ -1,3 +1,7 @@
 {
-  "extends": "next/core-web-vitals"
+  "parser": "next/dist/compiled/babel/eslint-parser",
+  "extends": "next/core-web-vitals",
+  "rules": {
+    // Your rules here
+  }
 }
