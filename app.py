@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
-
+from flask_graphql import GraphQLView
+from backend import schema
+from schema import schema
 app = Flask(__name__)
 
 app.secret_key = 'your_secret_key'  # Replace with a strong secret key
@@ -29,6 +31,15 @@ def login():
 @app.route('/dashboard')
 def dashboard():
     return 'Welcome to the Dashboard'
+
+app.add_url_rule(
+    '/graphql',
+    view_func=GraphQLView.as_view(
+        'graphql',
+        schema=schema,
+        graphiql=True  # This enables the in-browser IDE. Set to False if you don't want this.
+    )
+)
 
 if __name__ == '__main__':
     app.run(debug=True)
