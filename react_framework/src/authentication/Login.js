@@ -16,6 +16,10 @@ const Login = () => {
             navigate('/');
         }, 500);
     }
+    const createNewAccount = (event) => {
+        event.preventDefault();
+        navigate('/auth/signup');
+    }
 
     return (
         <React.Fragment>
@@ -40,6 +44,9 @@ const Login = () => {
                             </div>
                         </Form>
                     </Col>
+                    <a onClick={createNewAccount} className="btn-primary">
+                        Don't have an account
+                    </a>
                 </div> 
                 </div>
            

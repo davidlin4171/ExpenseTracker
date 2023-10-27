@@ -10,6 +10,7 @@ import 'primereact/resources/primereact.css';                       // core css
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Login from './authentication/Login';
+import Signup from './authentication/Signup';
 import Auth from './authentication/LoginNavBar';
 import App from './App';
 import GuardedRoute from './common/GuardedRoute';
@@ -22,6 +23,7 @@ root.render(
 			<Routes>
 				<Route path='/auth' element={<Auth />}>
 					<Route path='login' element={<Login />} />
+					<Route path='signup' element={<Signup />} />
 				</Route>
 				<Route path="/" element={<App />}>
 					<Route path='' element={
