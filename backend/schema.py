@@ -278,7 +278,7 @@ class AddBudget(graphene.Mutation):
         # maybe change to tokens later
 
         #check if valid budget
-        if budget_remaining < 0:
+        if budget_remaining < 0 or budget_total < 0:
             raise Exception("Budget invalid")
         
         result = collection.find_one({"id": userId})
