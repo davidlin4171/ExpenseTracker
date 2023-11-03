@@ -5,7 +5,8 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from datetime import datetime
 from backend import mongo
-from mongo import collection
+from .mongo import collection
+import uuid
 
 class ExpenseCategory(graphene.Enum):
     ALL = 'All Categories'
@@ -41,77 +42,93 @@ class User(graphene.ObjectType):
 
 # Query
 class Query(graphene.ObjectType):
-    user = graphene.Field(User, user_id=graphene.ID(required=True)) 
-    user_expenses = graphene.List(Expense, user_id=graphene.ID(required=True), expense_amount=graphene.Float(default_value=0), 
-                                  greater=graphene.Boolean(default_value=True), period=graphene.String(default_value=None),
-                                 expense_category=graphene.Field(ExpenseCategory, default_value='ALL'))
-    # Do we want it so that user can select all budgets that are above below a certain budget total/remaning amount?
-    # seems like a bit much
-    user_budget = graphene.List(Budget, user_id=graphene.ID(required=True), budget_category=graphene.Field(ExpenseCategory, default_value='ALL'),
-                                    budget_left=graphene.Int(deault_value = 0), greater=graphene.Boolean(default_value=True))
-    user_budget_exceeded = graphene.List(Budget, user_id=graphene.ID(required=True))
+    user = graphene.Field(
+        User, 
+        userId=graphene.ID(required=True)) 
+    
+    userExpenses = graphene.List(
+        Expense, 
+        userId=graphene.ID(required=True), 
+        expenseAmount=graphene.Float(default_value=0), 
+        greater=graphene.Boolean(default_value=True), 
+        period=graphene.String(default_value=""),
+        expenseCategory=graphene.Argument(ExpenseCategory, default_value='ALL'))
+    
+    userBudget = graphene.List(
+        Budget, 
+        userId=graphene.ID(required=True), 
+        budgetCategory=graphene.Argument(ExpenseCategory, default_value='ALL'),
+        budgetLeft=graphene.Int(default_value = 0), 
+        greater=graphene.Boolean(default_value=True))
+    
+    userBudgetExceeded = graphene.List(
+        Budget, 
+        userId=graphene.ID(required=True))
 
-    def resolve_user(self, info, user_id):
-        # use user_id to authenticate user for now, can change to tokens later if necessary
+    def resolve_user(self, info, userId):
+        # use userId to authenticate user for now, can change to tokens later if necessary
         
         # gets all user info from the database
-        user_data = collection.find_one({"id": user_id})
-
+        user_data = collection.find_one({"id": userId})
+        # print(list(collection.find({})))
+        print(user_data)
         return user_data
     
 
-    def resolve_user_expenses(self, info, user_id, expense_amount, greater, period, expense_category):
-        # use user_id to authenticate user for now, can change to tokens later if necessary
+    def resolve_userExpenses(self, info, userId, expenseAmount, greater, period, expenseCategory):
+        # use userId to authenticate user for now, can change to tokens later if necessary
         
         # finds current user
-        user_query = {"id": user_id}
+        user_query = {"id": userId}
 
         # query for filtering by expense
         expense_query = {}
 
-        # whether or not to filter all expenses greater than expense_amount
+        # whether or not to filter all expenses greater than expenseAmount
         if greater:
-            expense_query["expenses.amount"] = {"$gt": expense_amount}
-        
+            expense_query["expenses.amount"] = {"$gt": expenseAmount}
+        else:
+            expense_query["expenses.amount"] = {"$lte": expenseAmount}
+
         # filter based on time period. period in format "YYYY-MM-DD - YYYY-MM-DD" 
-        if period:
+        if period != "":
             start_date = datetime.strptime(period[0:10], "%Y-%m-%d")
             end_date = datetime.strptime(period[13:], "%Y-%m-%d")
-            expense_query["expense.date"] = {"$gte": start_date, "$lte": end_date}
+            expense_query["expenses.date"] = {"$gte": start_date, "$lte": end_date}
         
         # filter by expense category
-        if expense_category != 'ALL':
-            expense_query["expeneses.category"] = expense_category
-
+        if expenseCategory != 'ALL':
+            expense_query["expenses.category"] = expenseCategory
         pipeline = [
             {"$match": user_query},
             {"$unwind": "$expenses"},
             {"$match": expense_query},
             {"$group": {"_id": "$id", "expenses": {"$push": "$expenses"}}}
         ]
-
         result = list(collection.aggregate(pipeline=pipeline))
-
-        return result
+        
+        if not result:
+            return result
+        return result[0]['expenses']
     
-    def resolve_user_budget(self, info, user_id, budget_category, budget_left, greater):
-        # use user_id to authenticate user for now, can change to tokens later if necessary
+    def resolve_userBudget(self, info, userId, budgetCategory, budgetLeft, greater):
+        # use userId to authenticate user for now, can change to tokens later if necessary
 
         # find user
-        user_query = {"id": user_id}
+        user_query = {"id": userId}
 
         # query for filtering budget
         budget_query = {}
         
-        # find all budgets which either greater than or less than budget_left
+        # find all budgets which either greater than or less than budgetLeft
         if greater:
-            budget_query["budget.budget_remaining"] = {"$gt": budget_left}
+            budget_query["budget.budget_remaining"] = {"$gt": budgetLeft}
         else:
-            budget_query["budget.budget_remaining"] = {"$lt": budget_left}
+            budget_query["budget.budget_remaining"] = {"$lt": budgetLeft}
         
         # filter by budget category
-        if budget_category != 'ALL':
-            budget_query['budget.category'] = budget_category
+        if budgetCategory != 'ALL':
+            budget_query['budget.category'] = budgetCategory
 
         pipeline = [
             {"$match": user_query},
@@ -120,25 +137,29 @@ class Query(graphene.ObjectType):
             {"$group": {"_id": "$id", "budget": {"$push": "$budget"}}}
         ]
         result = list(collection.aggregate(pipeline=pipeline))
+        
+        if not result:
+            return result
+        return result[0]["budget"]
 
-        return result
-
-    def resolve_user_budget_exceeded(self, info, user_id):
-        # use user_id to authenticate user for now, can change to tokens later if necessary
+    def resolve_userBudgetExceeded(self, info, userId):
+        # use userId to authenticate user for now, can change to tokens later if necessary
         
         # filter all budgets for user that have been exceeded
         pipeline = [
-            {"$match": {"id": user_id}},
+            {"$match": {"id": userId}},
             {"$unwind": "$budget"},
             {"$match": {"budget.budget_exceeded": True}},
             {"$group": {"_id": "$id", "budget": {"$push": "$budget"}}}
         ]
         result = list(collection.aggregate(pipeline=pipeline))
-
-        return result
+        
+        if not result:
+            return result
+        return result[0]["budget"]
     
 '''
-For authentication or whatever, idk whether we are using tokens or if we just use like a user_id that we create
+For authentication or whatever, idk whether we are using tokens or if we just use like a userId that we create
 upon login and then pass that in for every subsequent mutation/query
 '''
 
@@ -157,8 +178,9 @@ class Register(graphene.Mutation):
             raise Exception("A username or email is already in use")
         
         # insert the new user info into database
+        id = collection.count_documents({}) + 1
         data = {
-            "id": 1231231231223,
+            "id": str(id),
             "username": username,
             "email": email,
             "password": password,
@@ -166,9 +188,8 @@ class Register(graphene.Mutation):
             "budget": []
         }
         result = collection.insert_one(data)
-
         new_user = User(
-            id = None, # add id after database implementation
+            id = str(id), # add id after database implementation
             username = username,
             email = email,
             password = password,
@@ -186,93 +207,104 @@ class Login(graphene.Mutation):
 
     def mutate(self, info, username, password):
         # check that username is valid entry in the database and the corresponding password is correct
-        result = collection.find_one({"$or": [{"username": username}, {"password": password}]})
+        result = collection.find_one({"$and": [{"username": username}, {"password": password}]})
         if not result:
             raise Exception("Username or password is wrong")
-        
-        # get user_id that will be subqsequntly passwed in later mutations and queries for user
-        user_id = result.get('id')
-        user = ...
 
-        return Login(user_id=user_id, user=user)
+        # get userId that will be subqsequntly passwed in later mutations and queries for user
+        user = User(
+            id = result['id'], # add id after database implementation
+            username = username,
+            email = result['email'],
+            password = password,
+            expenses = result['expenses'],
+            budget = result['budget']
+        )
+
+        return Login(user=user)
 
 class AddExpense(graphene.Mutation):
     class Arguments:
-        user_id = graphene.ID()
+        userId = graphene.ID()
         description = graphene.String(required=True)
         amount = graphene.Float(required=True)
-        date = Date(required=True)
-        category = graphene.Field(ExpenseCategory, required=True)
+        date = graphene.String(required=True)
+        category = graphene.Argument(ExpenseCategory, required=True)
     
     user = graphene.Field(User)
 
-    def mutate(self, info, user_id, description, amount, date, category):
+    def mutate(self, info, userId, description, amount, date, category):
         # maybe change to tokens later
 
         # check if valid expense
-        if amount < 0 or category not in ExpenseCategory:
+        if amount < 0:
             raise Exception("Expense invalid")
-        
-        new_expense = Expense(
-            id=None, # change later
-            description=description,
-            amount=amount,
-            date=date, 
-            category=category
-        )
 
         # add new expense to database
+        result = collection.find_one({"id": userId})
+        id = len(result['expenses']) + 1 if result else 1
         expense = {
-            "id": None,
+            "id": str(id),
             "description": description,
             "amount": amount,
-            "date": date,
+            "date": datetime.strptime(date, "%Y-%m-%d"),
             "category": category
         }
         collection.update_one(
-            {"id": user_id},
-            {"$push": {"expenses": new_expense}}
+            {"id": userId},
+            {"$push": {"expenses": expense}}
         )
-        return AddExpense()
+        user = User(
+            id = result['id'], # add id after database implementation
+            username = result['username'],
+            email = result['email'],
+            password = result['password'],
+            expenses = result['expenses'],
+            budget = result['budget']
+        )
+        return AddExpense(user=user)
 
 class AddBudget(graphene.Mutation):
     class Arguments():
-        user_id = graphene.ID()
+        userId = graphene.ID()
         budget_total = graphene.Float(required=True)
         budget_remaining = graphene.Float(required=True)
-        category = graphene.Field(ExpenseCategory)
+        budget_exceeded = graphene.Boolean()
+        category = graphene.Argument(ExpenseCategory)
     
     user = graphene.Field(User)
 
-    def mutate(self, info, user_id, budget_total, budget_remaning, budget_exceeded, category):
+    def mutate(self, info, userId, budget_total, budget_remaining, budget_exceeded, category):
         # maybe change to tokens later
 
         #check if valid budget
-        if budget_remaning < 0 or category not in ExpenseCategory:
+        if budget_remaining < 0:
             raise Exception("Budget invalid")
-
-        new_budget = Budget(
-            id = None, # change later
-            budget_total=budget_total,
-            budget_remaning=budget_remaning,
-            budget_exceeded=False,
-            category=category
-        )
-
+        
+        result = collection.find_one({"id": userId})
+        id = len(result['budget']) + 1 if result else 1
         # add budget to the database
-         # add new expense to database
         budget = {
-            "id": None,
+            "id": id,
             "budget_total": budget_total,
-            "budget_remaning": budget_remaning,
+            "budget_remaining": budget_remaining,
             "budget_exceeded": False,
             "category": category
         }
         collection.update_one(
-            {"id": user_id},
-            {"$push": {"expenses": budget}}
+            {"id": userId},
+            {"$push": {"budget": budget}}
         )
-        return AddBudget()
+
+        user = User(
+            id = result['id'], # add id after database implementation
+            username = result['username'],
+            email = result['email'],
+            password = result['password'],
+            expenses = result['expenses'],
+            budget = result['budget']
+        )
+        return AddBudget(user=user)
     
 class Mutation(graphene.ObjectType):
     register = Register.Field()

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_graphql import GraphQLView
-from backend import schema
-from schema import schema
+from backend.schema import schema
+# from .schema import schema
 app = Flask(__name__)
 
 app.secret_key = 'your_secret_key'  # Replace with a strong secret key
