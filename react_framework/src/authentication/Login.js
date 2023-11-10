@@ -45,7 +45,7 @@ const Login = () => {
                         </Form>
                     </Col>
                     <a onClick={createNewAccount} className="btn-primary">
-                        Don't have an account
+                        {'Don\'t have an account'}
                     </a>
                 </div> 
                 </div>
