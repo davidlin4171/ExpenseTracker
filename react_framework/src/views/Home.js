@@ -3,6 +3,10 @@ import  { Calendar } from 'primereact/calendar';
 import { Container } from 'react-bootstrap';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
+import { TabView, TabPanel } from 'primereact/tabview';
+import { InputText } from 'primereact/inputtext';
+import { InputNumber } from 'primereact/inputnumber';
+import { Button } from 'primereact/button';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -33,18 +37,65 @@ const Home = () => {
 	return (
 		<React.Fragment>
 			<Container className='py-5'>
-      <h3 className='fw-normal'>Tracker</h3>
-
-        <div className="flex justify-content-end">
-          <Calendar 
-          placeholder="Select a date range"
-          value={dates} onChange ={(e) => setDates(e.value)} selectionMode="range" readOnlyInput/>
-        </div>
-
-				<div className="chart-container">
-
-				<Doughnut data={data} />
-				</div>
+      <div className="card">
+            <TabView>
+                <TabPanel header="Past Spending">
+                  <div className="flex justify-content-end">
+                    <Calendar 
+                      placeholder="Select a date range"
+                      value={dates} onChange ={(e) => setDates(e.value)} selectionMode="range" readOnlyInput/>
+                  </div>
+				          <div className="chart-container">
+				            <Doughnut data={data} />
+				          </div>
+                </TabPanel>
+                <TabPanel header="Add Spending">
+                  <div className="card flex flex-column md:flex-row gap-3">
+                    <div className="p-inputgroup flex-1">
+                      <InputText placeholder="Category" />
+                    </div>
+                    <div className="p-inputgroup flex-1">
+                      <InputNumber placeholder="Amount" />
+                      <span className="p-inputgroup-addon">.00</span>
+                    </div>     
+                    <Button label="Submit" />
+                  </div>
+                </TabPanel>
+                <TabPanel header="Set Budegts">
+                <div className="flex flex-column gap-2">
+                  <label htmlFor="username">Category 1</label>
+                  <InputText id="username" aria-describedby="username-help" />
+                </div>
+                <div className="flex flex-column gap-2">
+                  <label htmlFor="username">Category 2</label>
+                  <InputText id="username" aria-describedby="username-help" />
+                </div>
+                <div className="flex flex-column gap-2">
+                <label htmlFor="username">Category 3</label>
+                  <InputText id="username" aria-describedby="username-help" />
+                </div>
+                <div className="flex flex-column gap-2">
+                <label htmlFor="username">Category 4</label>
+                  <InputText id="username" aria-describedby="username-help" />
+                </div>
+                <div className="flex flex-column gap-2">
+                <label htmlFor="username">Category 5</label>
+                  <InputText id="username" aria-describedby="username-help" />
+                </div>
+                <div className="flex flex-column gap-2">
+                <label htmlFor="username">Category 6</label>
+                  <InputText id="username" aria-describedby="username-help" />
+                </div>
+                <div>
+                <div className="card flex flex-column md:flex-row gap-3">
+                    
+                    <Button label="Submit" />
+                  </div>
+                </div>
+                
+                </TabPanel>
+            </TabView>
+        </div>      
 			</Container>
 		</React.Fragment>
 	)
