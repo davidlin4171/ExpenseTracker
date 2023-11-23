@@ -16,6 +16,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 const Home = () => {
   const [dates, setDates] = useState(null)
+  //TODO: fetch the data 
   const expensesAndBudget = {
     "expenses": [
       {
@@ -138,6 +139,18 @@ const renderWarningIcon = (rowData) => {
   return !rowData.budget_exceeded ? <i className="pi pi-exclamation-triangle" style={{ color: 'red' }}></i> : <i className="pi pi-check" style={{ color: 'green' }}></i>;
 };
 
+const addSpending = () => {
+  console.log('add clicked!');
+
+  // Add your logic or function calls here
+};
+
+const setBudgets = () => {
+  console.log('set clicked!');
+  // Add your logic or function calls here
+};
+
+
 
 	return (
 		<React.Fragment>
@@ -148,7 +161,7 @@ const renderWarningIcon = (rowData) => {
                   <div>
                   {expensePeriod ? (
                   <div>
-                    <h4>Expenses History</h4>
+                    <h4>Expense History</h4>
                   </div>
                   ) : (
                     <p>No expenses to display.</p>
@@ -191,10 +204,10 @@ const renderWarningIcon = (rowData) => {
                       <InputNumber placeholder="Amount" />
                       <span className="p-inputgroup-addon">.00</span>
                     </div>     
-                    <Button label="Submit" />
+                    <Button label="Submit" onClick={addSpending} />
                   </div>
                 </TabPanel>
-                <TabPanel header="Set Budegts">
+                <TabPanel header="Set Budget">
                 <div className="flex flex-column gap-2">
                   <label>Food and Dining</label>
                   <InputText id="FOOD" />
@@ -227,7 +240,7 @@ const renderWarningIcon = (rowData) => {
                 <div>
                 <div className="card flex flex-column md:flex-row gap-3">
                     
-                    <Button label="Submit" />
+                <Button label="Submit" onClick={setBudgets} />
                   </div>
                 </div>
                 
