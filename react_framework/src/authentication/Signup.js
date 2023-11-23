@@ -11,6 +11,7 @@ const Signup = () => {
         setTimeout(() => {
             navigate('/');
         }, 500);
+        console.log('aSJKNDASJKDNKJASNDKJASN');
         // create an account with graph ql
     }
 
