@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_graphql import GraphQLView
 from backend.schema import schema
+from flask_cors import CORS
 # from .schema import schema
 app = Flask(__name__)
-
+CORS(app, resources={r"/graphql": {"origins": "*"}})
 app.secret_key = 'your_secret_key'  # Replace with a strong secret key
 
 # Replace this with your actual user authentication logic

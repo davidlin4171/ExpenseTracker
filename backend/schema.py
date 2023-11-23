@@ -70,8 +70,9 @@ class Query(graphene.ObjectType):
         
         # gets all user info from the database
         user_data = collection.find_one({"id": userId})
-        # print(list(collection.find({})))
-        print(user_data)
+        for i in list(collection.find({})):
+            print(i, '\n')
+        #print(collection.find({}))
         return user_data
     
 
@@ -157,7 +158,6 @@ class Query(graphene.ObjectType):
         if not result:
             return result
         return result[0]["budget"]
-    
 '''
 For authentication or whatever, idk whether we are using tokens or if we just use like a userId that we create
 upon login and then pass that in for every subsequent mutation/query
@@ -167,22 +167,21 @@ upon login and then pass that in for every subsequent mutation/query
 class Register(graphene.Mutation):
     class Arguments:
         username = graphene.String(required=True)
-        email = graphene.String(required=True)
         password = graphene.String(required=True)
     
     user = graphene.Field(User)
 
-    def mutate(self, info, username, email, password):
+    def mutate(self, info, username, password):
         # check if the username and email are not already in the database
-        if collection.find_one({"$or": [{"username": username}, {"email": email}]}):
-            raise Exception("A username or email is already in use")
+        if collection.find_one({"username": username}):
+            raise Exception("A username is already in use")
         
         # insert the new user info into database
         id = collection.count_documents({}) + 1
         data = {
             "id": str(id),
             "username": username,
-            "email": email,
+            "email": None,
             "password": password,
             "expenses": [],
             "budget": []
@@ -191,7 +190,7 @@ class Register(graphene.Mutation):
         new_user = User(
             id = str(id), # add id after database implementation
             username = username,
-            email = email,
+            email = None,
             password = password,
             expenses = [],
             budget = []

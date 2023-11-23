@@ -3,3 +3,4 @@ Flask-GraphQL
 Flask-PyMongo
 graphene-mongo
 graphene
+flask-cors
