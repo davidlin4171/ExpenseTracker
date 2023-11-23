@@ -1,15 +1,45 @@
-import React from "react";
+import React, {useRef} from "react";
 import { Button, Col, Container, Form, FormGroup, FormLabel } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import { useMutation, gql } from "@apollo/client";
+
+const LOGIN = gql`
+    mutation Login($username: String!, $password: String!) {
+        login(username: $username, password: $password) {
+            user {
+                id
+                username
+                password
+            }
+        }
+    }
+`;
 
 const Login = () => {
 
     const navigate = useNavigate();
+    const [login, {data, loading, error}] = useMutation(LOGIN);
+
+    const usernameRef = useRef(null);
+    const passwordRef = useRef(null);
 
     const submitLoginForm = (event) => {
         event.preventDefault();
+
+        const username = usernameRef.current.value;
+        const password = passwordRef.current.value;
+
         //mock response
-        const token = 'mock'
+        try {
+            const {data} = login({
+                variables: {username, password}
+            });
+        } catch (error) {
+            console.error('Wrong username or password', error);
+        };
+        
+        const token = data['id'];
+        console.log(token);
         localStorage.clear();
         localStorage.setItem('user-token', token);
         setTimeout(() => {
@@ -31,11 +61,11 @@ const Login = () => {
                         <Form id="loginForm" onSubmit={submitLoginForm}>
                             <FormGroup className="mb-3">
                                 <FormLabel htmlFor={'login-username'}>Username</FormLabel>
-                                <input type={'text'} className="form-control" id={'login-username'} name="username" required />
+                                <input type={'text'} className="form-control" id={'login-username'} name="username" ref={usernameRef} required />
                             </FormGroup>
                             <FormGroup className="mb-3">
                                 <FormLabel htmlFor={'login-password'}>Password</FormLabel>
-                                <input type={'password'} className="form-control" id={'login-password'} name="password" required />
+                                <input type={'password'} className="form-control" id={'login-password'} name="password" ref={passwordRef} required />
                             </FormGroup>
                            <div className="row justify-content-end">
                             <div className="col-auto">
