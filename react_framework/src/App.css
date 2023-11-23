@@ -8,6 +8,10 @@
   margin: 0 auto; /* Center the chart horizontally */
 }
 
+.table-container {
+  margin-top: 200px !important;
+}
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;
