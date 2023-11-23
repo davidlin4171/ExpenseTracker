@@ -16,7 +16,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 const Home = () => {
   const [dates, setDates] = useState(null)
-  //TODO: fetch the data 
+  //TODO: fetch the data use graph ql - using the mock data for now
   const expensesAndBudget = {
     "expenses": [
       {
@@ -140,17 +140,23 @@ const renderWarningIcon = (rowData) => {
 };
 
 const addSpending = () => {
-  console.log('add clicked!');
-
-  // Add your logic or function calls here
+  const category = document.getElementById("add-category");
+  const amount = document.getElementById("add-amount");
+  //TODO: call an api to add spending
+  console.warn(category.value, amount.value)
 };
 
 const setBudgets = () => {
   console.log('set clicked!');
-  // Add your logic or function calls here
+  const food = document.getElementById("FOOD");
+  const transportation = document.getElementById("TRANSPORTATION");
+  const housing = document.getElementById("HOUSING");
+  const entertainment = document.getElementById("ENTERTAINMENT");
+  const health = document.getElementById("HEALTH");
+  const misc = document.getElementById("MISC");
+
+  //TODO: call an api to set budget
 };
-
-
 
 	return (
 		<React.Fragment>
@@ -198,10 +204,10 @@ const setBudgets = () => {
                 <TabPanel header="Add Spending">
                   <div className="card flex flex-column md:flex-row gap-3">
                     <div className="p-inputgroup flex-1">
-                      <InputText placeholder="Category" />
+                      <InputText placeholder="Category" id="add-category" />
                     </div>
                     <div className="p-inputgroup flex-1">
-                      <InputNumber placeholder="Amount" />
+                      <InputNumber placeholder="Amount" id="add-amonut" />
                       <span className="p-inputgroup-addon">.00</span>
                     </div>     
                     <Button label="Submit" onClick={addSpending} />
