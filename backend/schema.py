@@ -70,8 +70,6 @@ class Query(graphene.ObjectType):
         # use userId to authenticate user for now, can change to tokens later if necessary
         # gets all user info from the database
         user_data = collection.find_one({"id": userId})
-        for i in list(collection.find({})):
-            print(i, '\n')
         #print(collection.find({}))
         return user_data
     
@@ -253,6 +251,20 @@ class AddExpense(graphene.Mutation):
             {"id": userId},
             {"$push": {"expenses": expense}}
         )
+
+        pipeline = [
+            {"$match": {"id": userId}},
+            {"$unwind": "$budget"},
+            {"$match": {"budget.category": category}},
+            {"$group": {"_id": "$id", "budget": {"$push": "$budget"}}}
+        ]
+        existing_budget = list(collection.aggregate(pipeline=pipeline))
+        if (existing_budget):
+            collection.update_one(
+                {"id": userId, "budget.category": category}, 
+                {"$set": {"budget.$.budget_remaining": existing_budget[0]['budget'][0]['budget_remaining'] - amount,
+                          "budget.$.budget_exceeded": existing_budget[0]['budget'][0]['budget_remaining'] - amount < 0}}
+            )
         user = User(
             id = result['id'], # add id after database implementation
             username = result['username'],
@@ -277,21 +289,36 @@ class AddBudget(graphene.Mutation):
     def mutate(self, info, userId, budget_total, category):
         # maybe change to tokens later
 
+        pipeline = [
+            {"$match": {"id": userId}},
+            {"$unwind": "$budget"},
+            {"$match": {"budget.category": category}},
+            {"$group": {"_id": "$id", "budget": {"$push": "$budget"}}}
+        ]
+        existing_budget = list(collection.aggregate(pipeline=pipeline))
+        # print(existing_budget[0])
         result = collection.find_one({"id": userId})
-        id = len(result['budget']) + 1 if result else 1
-        # add budget to the database
-        budget = {
-            "id": id,
-            "budget_total": budget_total,
-            "budget_remaining": budget_total,
-            "budget_exceeded": False,
-            "category": category
-        }
-        collection.update_one(
-            {"id": userId},
-            {"$push": {"budget": budget}}
-        )
 
+        if not existing_budget:
+            id = len(result['budget']) + 1 if result else 1
+            # add budget to the database
+            budget = {
+                "id": id,
+                "budget_total": budget_total,
+                "budget_remaining": budget_total,
+                "budget_exceeded": False,
+                "category": category
+            }
+            collection.update_one(
+                {"id": userId},
+                {"$push": {"budget": budget}}
+            )
+        else:
+            collection.update_one(
+                {"id": userId, "budget.category": category}, 
+                {"$set": {"budget.$.budget_total": budget_total, "budget.$.budget_remaining": budget_total,"budget.$.budget_exceeded": False}}
+            )
+            
         user = User(
             id = result['id'], # add id after database implementation
             username = result['username'],

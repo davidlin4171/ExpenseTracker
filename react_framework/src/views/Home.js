@@ -62,6 +62,14 @@ const Home = () => {
   const [dates, setDates] = useState(null);
   const [errorMessage, setExpenseError] = useState('');
 
+  const [food, setFood] = useState('');
+  const [transportation, setTransportation] = useState('');
+  const [housing, setHousing] = useState('');
+  const [ent, setEnt] = useState('');
+  const [health, setHealth] = useState('');
+  const [misc, setMisc] = useState('');
+  const [budgetError, setBudgetError] = useState('');
+
 
   //authenticate user
   const userToken = localStorage.getItem('user-token');
@@ -72,7 +80,7 @@ const Home = () => {
 
   // mutation for adding budgets
   const [add_budget, {data: budget_data, loading: budget_loading, error: budget_error}] = useMutation(ADD_BUDGET);
-  
+
   // query for retrieving expenses and budget
   const {loading, error, data} = useQuery(EXPENSE_QUERY, {
     variables: {userId},
@@ -83,26 +91,36 @@ const Home = () => {
 
   const expensesAndBudget = data['user'];
 
-  const mergeExpensesAndBudget = [...expensesAndBudget.expenses];
+  const budgetInfoByCategory = new Map();
+  const runningTotals = new Map();
 
   expensesAndBudget.budget.forEach(budgetItem => {
-    const correspondingExpense = mergeExpensesAndBudget.find(expense => expense.category == budgetItem.category);
-
-    if (correspondingExpense) {
-      correspondingExpense.budget_total = budgetItem.budget_total;
-      correspondingExpense.budget_remaining = budgetItem.budget_remaining;
-      correspondingExpense.budget_exceeded = budgetItem.budget_exceeded;
-    } else {
-      // If there is no corresponding expense, create a new entry
-      mergeExpensesAndBudget.push({
-        "category": budgetItem.category,
-        "budget_total": budgetItem.budget_total,
-        "budget_remaining": budgetItem.budget_remaining,
-        "budget_exceeded": budgetItem.budget_exceeded,
-      });
-    }
+    budgetInfoByCategory.set(budgetItem.category, {
+      budgetTotal: budgetItem.budgetTotal,
+      budgetRemaining: budgetItem.budgetRemaining,
+      budgetExceeded: budgetItem.budgetExceeded
+    });
   });
-
+  const mergeExpensesAndBudget = expensesAndBudget.expenses.map(expense => {
+    const budgetInfo = budgetInfoByCategory.get(expense.category) || {};
+    let total = runningTotals.get(expense.category) || 0;
+  
+    // Update the running total for this category
+    total += expense.amount;
+    runningTotals.set(expense.category, total);
+  
+    // Calculate remaining budget and check if exceeded
+    const budgetTotal = budgetInfo.budgetTotal || null;
+    const budgetRemaining = budgetTotal !== null ? budgetTotal - total : null;
+    const budgetExceeded = budgetRemaining !== null ? budgetRemaining < 0 : false;
+  
+    return {
+      ...expense,
+      budgetTotal: budgetTotal,
+      budgetRemaining: budgetRemaining,
+      budgetExceeded: budgetExceeded
+    };
+  });
 
   const filteredExpensesAndBudget = mergeExpensesAndBudget.filter(item => {
     if (!dates) {
@@ -180,7 +198,7 @@ const Home = () => {
   const expensePeriod = getExpensePeriod(mergeExpensesAndBudget);
 
   const renderWarningIcon = (rowData) => {
-    return !rowData.budget_exceeded ? <i className="pi pi-exclamation-triangle" style={{ color: 'red' }}></i> : <i className="pi pi-check" style={{ color: 'green' }}></i>;
+    return rowData.budgetExceeded ? <i className="pi pi-exclamation-triangle" style={{ color: 'red' }}></i> : <i className="pi pi-check" style={{ color: 'green' }}></i>;
   };
 
   function getCurrentDateFormatted() {
@@ -194,11 +212,7 @@ const Home = () => {
 
   const date = getCurrentDateFormatted();
   const AddSpending = async () => {
-    //TODO: call an api to add spending
-    console.log("1");
-    console.log(typeof(category));
-    console.log(date);
-    
+ 
     try {
       await add_expense({
         variables: {userId, amount, description, category: category.toUpperCase(), date},
@@ -206,25 +220,36 @@ const Home = () => {
       window.location.reload();
     } catch(error) {
       console.log("there was an error processing your expense");
-      setExpenseError("Invalid Expense")
-    }
-    // window.location.reload();
-    setCategory('');
-    setAmount();
-    setDescription('');
+      setExpenseError("Invalid Expense");
+    };  
 
   };
 
-  const setBudgets = () => {
-    console.log('set clicked!');
-    const food = document.getElementById("FOOD");
-    const transportation = document.getElementById("TRANSPORTATION");
-    const housing = document.getElementById("HOUSING");
-    const entertainment = document.getElementById("ENTERTAINMENT");
-    const health = document.getElementById("HEALTH");
-    const misc = document.getElementById("MISC");
+  function isValidInput(input) {
+    return !isNaN(input) && Number(input) > 0;
+  }
 
-    //TODO: call an api to set budget
+  const SetBudgets = async () => {
+
+    const categories = ['FOOD', 'HOUSING',  'TRANSPORTATION', 'ENTERTAINMENT', 'HEALTH', 'MISC'];
+    const budgets = [food, housing, transportation, ent, health, misc];
+    try {
+      for(let i = 0; i < categories.length; i++) {
+        if (!budgets[i]) {
+          continue;
+        } else if (!isValidInput(budgets[i])) {
+          throw new Error("Not Valid");
+        } else {
+          await add_budget({
+            variables: {userId, budgetTotal: budgets[i], category: categories[i]}
+          });
+        }
+      }
+      window.location.reload();
+    } catch (budget_error) {
+      console.log("error");
+      setBudgetError("Invalid Budget");
+    };
   };
 
 	return (
@@ -260,13 +285,14 @@ const Home = () => {
 				          </div>
                   <Divider />
                   <div className="table-container">
-                    <DataTable value={filteredExpensesAndBudget} tableStyle={{ minWidth: '50rem' }}>
+                    <DataTable value={filteredExpensesAndBudget.reverse()} tableStyle={{ minWidth: '50rem' }}>
                       <Column field="category" sortable header="Category"></Column>
                       <Column field="amount" sortable header="Amount($)"></Column>
                       <Column field="description"sortable  header="Description"></Column>
                       <Column field="date" sortable header="Date"></Column>
-                      <Column field="budget_total" sortable header="Total Budget ($)"></Column>
-                      <Column field="budget_exceeded" header="Within a budget" body={renderWarningIcon} />
+                      <Column field="budgetTotal" sortable header="Total Budget ($)"></Column>
+                      <Column field="budgetRemaining" sortable header="Budget Remaining"></Column>
+                      <Column field="budgetExceeded" header="Within budget" body={renderWarningIcon} />
                     </DataTable>
                   </div>         
                 </TabPanel>
@@ -300,40 +326,43 @@ const Home = () => {
                 <TabPanel header="Set Budget">
                 <div className="flex flex-column gap-2">
                   <label>Food and Dining</label>
-                  <InputText id="FOOD" />
+                  <InputText id="FOOD"  value={food} onChange={(e) => setFood(e.target.value)} />
                 </div>
 
                 <div className="flex flex-column gap-2">
                   <label>Transportation</label>
-                  <InputText id="TRANSPORTATION" />
+                  <InputText id="TRANSPORTATION" value={transportation} onChange={(e) => setTransportation(e.target.value)} />
                 </div>
 
                 <div className="flex flex-column gap-2">
                   <label>Housing</label>
-                  <InputText id="HOUSING" />
+                  <InputText id="HOUSING" value={housing} onChange={(e) => setHousing(e.target.value)} />
                 </div>
 
                 <div className="flex flex-column gap-2">
                   <label>Entertainment</label>
-                  <InputText id="ENTERTAINMENT" />
+                  <InputText id="ENTERTAINMENT" value={ent} onChange={(e) => setEnt(e.target.value)} />
                 </div>
 
                 <div className="flex flex-column gap-2">
                   <label>Healthcare and Fitness</label>
-                  <InputText id="HEALTH" />
+                  <InputText id="HEALTH" value={health} onChange={(e) => setHealth(e.target.value)}/>
                 </div>
 
                 <div className="flex flex-column gap-2">
                   <label>Miscellaneous</label>
-                  <InputText id="MISC" />
+                  <InputText id="MISC" value={misc} onChange={(e) => setMisc(e.target.value)} />
                 </div>
                 <div>
                 <div className="card flex flex-column md:flex-row gap-3">
-                    
-                <Button label="Submit" onClick={setBudgets} />
+                <Button label="Submit" onClick={SetBudgets} />
                   </div>
-                </div>
-                
+                </div> 
+                {budgetError && (
+                                <div className="error-message" style={{ color: 'red' }}>
+                                    {budgetError}
+                                </div>
+                            )}
                 </TabPanel>
             </TabView>
         </div>      
