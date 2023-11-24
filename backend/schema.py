@@ -1,5 +1,6 @@
 import graphene
 from graphene import Date
+from graphql import GraphQLError
 import pymongo
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
@@ -67,7 +68,6 @@ class Query(graphene.ObjectType):
 
     def resolve_user(self, info, userId):
         # use userId to authenticate user for now, can change to tokens later if necessary
-        
         # gets all user info from the database
         user_data = collection.find_one({"id": userId})
         for i in list(collection.find({})):
@@ -174,8 +174,8 @@ class Register(graphene.Mutation):
     def mutate(self, info, username, password):
         # check if the username and email are not already in the database
         if collection.find_one({"username": username}):
-            raise Exception("A username is already in use")
-        
+            # raise Exception("A username is already in use")
+            raise GraphQLError("Username already in use")
         # insert the new user info into database
         id = collection.count_documents({}) + 1
         data = {
@@ -208,7 +208,7 @@ class Login(graphene.Mutation):
         # check that username is valid entry in the database and the corresponding password is correct
         result = collection.find_one({"$and": [{"username": username}, {"password": password}]})
         if not result:
-            raise Exception("Username or password is wrong")
+            raise GraphQLError("Username or password is wrong")
 
         # get userId that will be subqsequntly passwed in later mutations and queries for user
         user = User(
@@ -237,7 +237,7 @@ class AddExpense(graphene.Mutation):
 
         # check if valid expense
         if amount < 0:
-            raise Exception("Expense invalid")
+            raise GraphQLError("Expense invalid")
 
         # add new expense to database
         result = collection.find_one({"id": userId})
@@ -267,26 +267,23 @@ class AddBudget(graphene.Mutation):
     class Arguments():
         userId = graphene.ID()
         budget_total = graphene.Float(required=True)
-        budget_remaining = graphene.Float(required=True)
-        budget_exceeded = graphene.Boolean()
+        # budget_remaining = graphene.Float()
+        # budget_exceeded = graphene.Boolean()
         category = graphene.Argument(ExpenseCategory)
     
     user = graphene.Field(User)
 
-    def mutate(self, info, userId, budget_total, budget_remaining, budget_exceeded, category):
+    # def mutate(self, info, userId, budget_total, budget_remaining, budget_exceeded, category):
+    def mutate(self, info, userId, budget_total, category):
         # maybe change to tokens later
 
-        #check if valid budget
-        if budget_remaining < 0 or budget_total < 0:
-            raise Exception("Budget invalid")
-        
         result = collection.find_one({"id": userId})
         id = len(result['budget']) + 1 if result else 1
         # add budget to the database
         budget = {
             "id": id,
             "budget_total": budget_total,
-            "budget_remaining": budget_remaining,
+            "budget_remaining": budget_total,
             "budget_exceeded": False,
             "category": category
         }
